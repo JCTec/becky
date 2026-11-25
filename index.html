@@ -22,7 +22,7 @@
     Small text only ever sits on a solid surface (nav, panels, cards): 11:1 or better.
     Text straight on the sky is large text only, always ink, 3:1 or better over the sky
     and every ring of the sun at every text size; it scrolls away as the sky darkens.
-    High contrast puts the banner text on a solid surface too.
+    High contrast puts the banner text on a solid surface too, and takes card text to 18:1.
 
   The sun, sky and texture are documented in scroll-sunset-recreate.md.
   The one outside dependency is the Instrument Serif font, loaded from Google Fonts.
@@ -370,15 +370,24 @@
   /* High contrast keeps the sun and the sky, and gives the name a plate so it never
      depends on the sky behind it. The plate is the sun's own core yellow with ink text,
      10.2:1, at every scroll position.
+     Cards redefine their own colours, so everything inside follows: near-black on warm
+     white (18:1), numerals 11:1, solid rules, and heavier small text. .contact-mail and
+     the headings use the display font, which has one weight, so only colour changes there.
      Applied when chosen, and when the system asks for more contrast unless the visitor
      explicitly chose Standard. The two blocks are the same rules. */
   :root[data-contrast="high"] .banner-id { background: var(--core); --fg: var(--ink); padding: 1rem 1rem 1.4rem; margin-left: -1rem; border-radius: 14px; }
   :root[data-contrast="high"] .figures { display: none; }
   :root[data-contrast="high"] { --edge: var(--fg); }
+  :root[data-contrast="high"] .section { --ink: #120a05; --cream: #fffaf0; --ember: #6b1f08; --rule: var(--ink); border: 2px solid var(--ink); }
+  :root[data-contrast="high"] .section p:not(.lede):not(.label) { font-weight: 500; }
+  :root[data-contrast="high"] .section .label { font-weight: 700; }
   @media (prefers-contrast: more) {
     :root:not([data-contrast="standard"]) .banner-id { background: var(--core); --fg: var(--ink); padding: 1rem 1rem 1.4rem; margin-left: -1rem; border-radius: 14px; }
     :root:not([data-contrast="standard"]) .figures { display: none; }
     :root:not([data-contrast="standard"]) { --edge: var(--fg); }
+    :root:not([data-contrast="standard"]) .section { --ink: #120a05; --cream: #fffaf0; --ember: #6b1f08; --rule: var(--ink); border: 2px solid var(--ink); }
+    :root:not([data-contrast="standard"]) .section p:not(.lede):not(.label) { font-weight: 500; }
+    :root:not([data-contrast="standard"]) .section .label { font-weight: 700; }
   }
 
   @media (prefers-reduced-motion: no-preference) {
