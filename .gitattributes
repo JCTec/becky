@@ -1,0 +1,3 @@
+# Dania works on Windows, JC on a Mac. One line ending for everyone, so a save made on one
+# machine never rewrites every line on the other.
+* text=auto eol=lf
