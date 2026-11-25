@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<!--
+  Dania Guzman: personal site, one file.
+
+  How it is put together
+    1. A fixed stage behind everything draws the sky, the line texture and the layered sun.
+       It never scrolls. One number, --p (0 to 1), drives every change in it.
+    2. The page itself is ordinary document flow on top of the stage: the welcome banner
+       (name and subtitle), then one card per section. Nothing in the flow is animated.
+    3. A fixed navigation pill, top-left, with the reading settings (text size, contrast).
+
+  Scripts: two, both plain ECMAScript 2015, no libraries, no build step.
+    - in <head>:      applies saved reading settings before first paint.
+    - end of <body>:  publishes scroll progress as --p, and wires the settings panel.
+
+  Knobs
+    TRAVEL (script, end of body)   screens of scrolling the sunset takes
+    --R and each layer's --s       sun size
+    --flip threshold (0.46)        where the nav switches from ink-on-cream to cream-on-night
+
+  Contrast rules this file keeps
+    Small text only ever sits on a solid surface (nav, panels, cards): 11:1 or better.
+    Text straight on the sky is large text only, and scrolls away before the sky darkens.
+    High contrast puts the banner text on a solid surface too.
+
+  The sun, sky and texture are documented in scroll-sunset-recreate.md.
+  The one outside dependency is the Instrument Serif font, loaded from Google Fonts.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dania Guzman</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  /* Layout idea: a fixed stage with the sun anchored on the top-right corner, driven by
+     --p (scroll progress 0..1) set from JS, and a normal page scrolling over it.
+     Single theme by choice. */
+  :root {
+    color-scheme: light;
+
+    /* palette */
+    --core:   #f9dc9c;
+    --amber:  #f4ad4e;
+    --orange: #ee8a35;
+    --burnt:  #de6a2b;
+    --rust:   #c44f27;
+    --apricot:#efb382;
+    --ink:    #3d2a1b;
+    --cream:  #f6ead3;
+    --night:  #1c130c;
+
+    /* type */
+    --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    /* geometry */
+    --R: 62vmin;   /* radius of the outermost layer */
+
+    /* sunset progress, written by the script: 0 at the top of the page, 1 once TRAVEL
+       screens have been scrolled, and 1 from there down */
+    --p: 0;
+    /* the layers leave one by one, after a short still moment at the top */
+    --p2: clamp(0, calc((var(--p) - 0.06) / 0.94), 1);
+
+    /* Foreground follows the sky: ink by day, cream at dusk. It is a hard switch, not a
+       fade, because a half-mixed text colour on a half-dark sky is the lowest contrast
+       there is. 0.46 is where ink and cream read equally well against the sky. The nav
+       and its panels use it; the banner text has scrolled away before it is reached. */
+    --flip: clamp(0, calc((var(--p) - 0.46) / 0.002), 1);
+    --fg: color-mix(in oklab, var(--cream) calc(var(--flip) * 100%), var(--ink));
+    /* A plate is a solid surface for small text, so it never sits on the sun or
+       the mid-scroll sky: ink on cream is 11:1, cream on night 15:1. */
+    --plate: color-mix(in oklab, var(--night) calc(var(--flip) * 100%), var(--cream));
+    --edge: color-mix(in oklab, var(--fg) 35%, var(--plate));
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  /* One focus ring for the whole page. */
+  :where(a, button, input, summary):focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html { background: var(--night); }
+  body {
+    background: var(--night);
+    color: var(--ink);
+    font-family: var(--body);
+    overflow-x: hidden;
+  }
+
+  .stage { position: fixed; inset: 0; overflow: hidden; }
+
+  /* ---------- sky ---------- */
+  .sky, .dusk { position: absolute; inset: 0; }
+  .sky {
+    background: radial-gradient(circle farthest-corner at 100% 0,
+      #f8ecd6 0%, #f2e2c6 30%, #ead7b7 62%, #dcc6a1 100%);
+  }
+  .dusk {
+    background: linear-gradient(200deg, #3b2a1d 0%, var(--night) 70%);
+    opacity: var(--p);
+  }
+
+  /* ---------- carved lines: sparse, nearly straight hand-cut lines across the whole page, slightly inclined ---------- */
+  .figures {
+    position: absolute; inset: -30%;          /* oversized so the tilt never exposes an edge */
+    rotate: -5deg;
+    /* ink goes from umber on paper to cream at dusk, so the cuts stay faintly readable */
+    background-color: color-mix(in oklab, var(--cream) calc(var(--p) * 100%), #7b5a36);
+    --tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720' fill='none' stroke='%23000' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M580.6 7.3L617.7 7L654.9 6.6L692 6.9L729.1 5.7L766.2 5.5M-139.4 7.3L-102.3 7L-65.1 6.6L-28 6.9L9.1 5.7L46.2 5.5M270.7 7.4L312.9 6.6L355.1 6.1L397.4 6L439.6 5L481.8 6.1L524 5.9M102.6 43.8L140.3 42.7L178 43.5L215.7 43.4L253.4 43.6L291 44.8L328.7 44.4L366.4 44.5M464.6 43.3L504.6 43.6L544.5 42.7L584.5 43.7M539.7 75.2L578.8 75.5L617.9 74.5L657 74.2L696.1 74.9L735.2 74.5M-180.3 75.2L-141.2 75.5L-102.1 74.5L-63 74.2L-23.9 74.9L15.2 74.5M167.4 76.2L210.7 75L254.1 74.7L297.4 74.5L340.7 74.2L384.1 75.5L427.4 75.2M609.3 116.8L649.4 116.6L689.5 117.5L729.6 116.5L769.7 116.2L809.8 116.1L849.9 115.1L890 116L930.1 116L970.1 116.5M-110.7 116.8L-70.6 116.6L-30.5 117.5L9.6 116.5L49.7 116.2L89.8 116.1L129.9 115.1L170 116L210.1 116L250.1 116.5M195 155.1L233.9 155.3L272.9 154.8L311.8 153.7L350.8 154.4L389.8 153.8L428.7 154.4L467.7 155.4L506.7 155L545.6 155.8M11.9 153.7L48.8 154.7L85.6 154.4L122.5 155.2L159.3 155.9M604.3 199.9L641.6 199.9L678.9 200.9L716.2 200.3L753.5 199.8L790.7 199.9M-115.7 199.9L-78.4 199.9L-41.1 200.9L-3.8 200.3L33.5 199.8L70.7 199.9M366.4 200.7L407.4 199.7L448.4 199.1L489.4 199.3L530.4 198.5L571.4 199.7M547 247.2L588 247.7L628.9 246.7L669.9 247.1L710.9 245.9L751.9 245.8L792.9 246.2L833.8 245.9M-173 247.2L-132 247.7L-91.1 246.7L-50.1 247.1L-9.1 245.9L31.9 245.8L72.9 246.2L113.8 245.9M363.8 246.4L423.3 245.4M17 287.2L60.2 286.8L103.4 287.4L146.7 286M405.2 287.6L442.3 287L479.4 286.6L516.5 286.7L553.6 285.5L590.7 285.6M238.8 319.8L275.7 318.8L312.5 318.2L349.4 318.5L386.3 317.7L423.1 318.2M615 318.8L656.2 319.1L697.4 317.8L738.6 318.1L779.8 318.4L821 318.4L862.2 319.7L903.4 319.2M-105 318.8L-63.8 319.1L-22.6 317.8L18.6 318.1L59.8 318.4L101 318.4L142.2 319.7L183.4 319.2M380 358.2L421.1 358.7L462.2 358.1L503.3 359L544.3 359.6L585.4 359.4L626.5 360.3M19.7 359L56.9 357.9L94.1 358.5L131.3 358.9L168.5 358.8L205.7 360M21.3 401.9L60.6 402L100 401.5L139.4 400.9L178.7 401.9L218.1 401.7L257.5 402.4L296.8 403.1L336.2 402.3L375.6 402.8M547.8 401.1L583.6 402.4L619.4 402.5M502 440.2L540.8 440.1L579.5 440.9L618.2 440.6L657 441.7L695.7 442M72.3 441.5L115.1 440.2L158 440.7L200.8 440L243.6 440.9L286.4 441.5L329.3 441.5L372.1 442.2M595.8 478.1L640 478.6L684.3 478.8L728.5 479.6M-124.2 478.1L-80 478.6L-35.7 478.8L8.5 479.6M121.7 478.2L161.8 477.3L201.9 478.1L241.9 477.7L282 478.5L322.1 479.3M470.3 477.8L504.7 478.2L539.2 477.6M172.9 523.2L212.1 522.1L251.3 522.6L290.5 523L329.7 523L369 524.3L408.2 523.8L447.4 523.8M638 522.3L680.2 523.7L722.5 523.4L764.7 524.2L806.9 524L849.1 523.1M-82 522.3L-39.8 523.7L2.5 523.4L44.7 524.2L86.9 524L129.1 523.1M231.3 557.7L271.4 557.3L311.6 556.5L351.7 556.7L391.8 555.5L431.9 556.1L472 556.4L512.1 556.4L552.2 557.7M39.8 556.3L80.3 555.6L120.8 556.4M120.8 606.5L163 606.2L205.2 605.3L247.4 606.3L289.6 606.1L331.8 607.1L374 607.4L416.2 606.9M326.2 635.5L368.3 634.7L410.3 635.3L452.3 634.2L494.3 633.8M686.6 634.7L728.6 635.6L770.7 634.5L812.8 634.5L854.8 633.9L896.9 633.3M-33.4 634.7L8.6 635.6L50.7 634.5L92.8 634.5L134.8 633.9L176.9 633.3M275.5 683.2L316 683.9L356.5 684.1L396.9 683L437.4 683.3L477.9 682.2M74.9 682.6L109 682.5L143.1 682.7L177.3 682'/%3E%3C/svg%3E");
+    -webkit-mask: var(--tile) 0 calc(var(--p) * -140px) / 720px 720px;
+            mask: var(--tile) 0 calc(var(--p) * -140px) / 720px 720px;
+    opacity: .17;
+  }
+
+  /* ---------- sun: everything hangs from a zero-size point on the corner ---------- */
+  .sun { position: absolute; top: 0; right: 0; width: 0; height: 0; }
+
+  .halo {
+    position: absolute;
+    width: calc(var(--R) * 3.2); height: calc(var(--R) * 3.2);
+    left: calc(var(--R) * -1.6); top: calc(var(--R) * -1.6);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(246 190 120 / .38) 0 38%, rgb(240 170 110 / .14) 55%, transparent 68%);
+    opacity: calc(1 - var(--p2));
+  }
+
+  /* ---------- layers ---------- */
+  .layer {
+    /* --n: 0 is the outermost layer and leaves first */
+    --q: clamp(0, calc((var(--p2) - var(--n) * 0.14) / 0.3), 1);
+    position: absolute; width: 0; height: 0;
+    /* retreat into the corner and past it, up and to the right */
+    transform:
+      translate(calc(var(--q) * 20vmin), calc(var(--q) * -20vmin))
+      scale(calc(1 - var(--q)));
+  }
+  /* Each layer is three lopsided blobs of the same ink, turning against each other.
+     Its edge is whatever their union happens to be, so it never settles into a clean arc. */
+  .layer b {
+    position: absolute;
+    width: calc(var(--s) * 2); height: calc(var(--s) * 2);
+    left: calc(var(--s) * -1); top: calc(var(--s) * -1);
+    background: var(--c);
+    animation:
+      spin var(--t) linear infinite,
+      morphA 7s ease-in-out infinite alternate;
+    animation-delay: calc(var(--n) * -3.1s);
+  }
+  .layer b:nth-child(2) {
+    animation-name: spin, morphB;
+    animation-duration: calc(var(--t) * .62), 9s;
+    animation-direction: reverse, alternate;
+  }
+  .layer b:nth-child(3) {
+    animation-name: spin, morphC;
+    animation-duration: calc(var(--t) * .81), 11s;
+  }
+
+  @keyframes spin { to { rotate: 360deg; } }
+  @keyframes morphA {
+    0%   { border-radius: 58% 42% 47% 53% / 44% 57% 43% 56%; scale: .97;  translate: 1.5% -1%; }
+    50%  { border-radius: 43% 57% 56% 44% / 55% 42% 58% 45%; scale: 1.03; translate: -1.5% 1.5%; }
+    100% { border-radius: 50% 50% 41% 59% / 60% 46% 54% 40%; scale: .95;  translate: 1% 2%; }
+  }
+  @keyframes morphB {
+    0%   { border-radius: 41% 59% 52% 48% / 57% 41% 59% 43%; scale: 1.02; translate: -2% .5%; }
+    50%  { border-radius: 56% 44% 42% 58% / 45% 58% 42% 55%; scale: .95;  translate: 1.5% -2%; }
+    100% { border-radius: 47% 53% 60% 40% / 52% 44% 56% 48%; scale: 1.01; translate: .5% 1.5%; }
+  }
+  @keyframes morphC {
+    0%   { border-radius: 52% 48% 40% 60% / 41% 53% 47% 59%; scale: .96;  translate: 1% 2%; }
+    50%  { border-radius: 44% 56% 58% 42% / 59% 47% 53% 41%; scale: 1.02; translate: -1% -1.5%; }
+    100% { border-radius: 60% 40% 49% 51% / 46% 60% 40% 54%; scale: .98;  translate: -2% 1%; }
+  }
+
+  /* ---------- welcome banner: the name, left, vertically centred ---------- */
+  /* An ordinary first screen of the page: it scrolls away like everything else. */
+  .banner {
+    position: relative; z-index: 1;
+    min-height: 100vh; min-height: 100svh;
+    display: grid; align-content: center; justify-items: start;
+    padding: 0 clamp(16px, 5vw, 64px);
+  }
+  .banner h1 {
+    font: italic 400 clamp(3.5rem, 12vw, 9rem)/.92 var(--display);
+    letter-spacing: -.01em;
+    color: var(--fg);
+  }
+  /* The subtitle sits straight on the sky, so it is semibold and never below 1.2rem:
+     that keeps it in the large-text class, where the sky gives it 9:1 at the top of
+     the page and no less than 4:1 by the time it scrolls off. */
+  .banner-sub {
+    margin-top: .9rem;
+    font: 600 clamp(1.2rem, 2.2vw, 1.6rem)/1.3 var(--body);
+    color: var(--fg);
+  }
+
+  /* ---------- sections: a normal page, scrolling over the fixed sky ---------- */
+  /* Nothing here is animated. Only the sky behind is tied to the scroll position. */
+  main {
+    position: relative; z-index: 1;
+    padding: 0 clamp(16px, 5vw, 64px) 30vh;
+    display: grid; gap: 20vh;
+    color: var(--cream);
+  }
+  .section {
+    /* A card: a cream surface with ink text, 11:1, on the night sky. */
+    --fg: var(--ink);                    /* focus rings inside a card stay ink */
+    min-height: 60vh; scroll-margin-top: 22vh;
+    display: grid; align-content: start; gap: 1.1rem;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    background: var(--cream); color: var(--ink);
+    border: 1px solid color-mix(in oklab, var(--ink) 25%, var(--cream)); border-radius: 14px;
+  }
+  .section h2 { font: italic 400 clamp(2.25rem, 5vw, 3.5rem)/1 var(--display); }
+  .section p { max-width: 34rem; font-size: 1.05rem; line-height: 1.55; }
+
+  /* ---------- inside the cards ---------- */
+  /* Everything on a card is ink on cream (11:1). --ember is the one accent, a deep rust
+     used only for large numerals: 6.6:1, which clears the large-text bar. Covers are
+     decoration and carry no text. */
+  .section { --rule: color-mix(in oklab, var(--ink) 25%, var(--cream)); --ember: #8f3417; gap: clamp(1.5rem, 3vw, 2.5rem); }
+  .section h3 { font: 600 1.15rem/1.25 var(--body); }
+  .section .lede { font: italic 400 clamp(1.6rem, 3.2vw, 2.4rem)/1.18 var(--display); max-width: 22em; text-wrap: balance; }
+  .label { font: .7rem/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .num { font: italic 400 clamp(2.5rem, 5vw, 4rem)/1 var(--display); color: var(--ember); font-variant-numeric: tabular-nums; }
+
+  /* About: her words on the left, three numbers on the right */
+  .about { display: grid; grid-template-columns: 1.4fr 1fr; gap: clamp(2rem, 6vw, 6rem); align-items: start; }
+  .about-text { display: grid; gap: 1.1rem; }
+  .stats > div { display: flex; flex-direction: column-reverse; gap: .35rem; padding: 1.1rem 0; border-top: 1px solid var(--rule); }
+  .stats > div:last-child { border-bottom: 1px solid var(--rule); }
+
+  /* Experience: one row per role, dates in a fixed left column */
+  .roles { list-style: none; padding: 0; }
+  .roles li { display: grid; grid-template-columns: 9rem 1fr; gap: .4rem 2rem; padding: 1.4rem 0; border-top: 1px solid var(--rule); }
+  .roles li:last-child { border-bottom: 1px solid var(--rule); }
+  .roles .label { padding-top: .35rem; }
+  .roles .role { display: grid; gap: .3rem; }
+  .roles .org { font-size: .95rem; }
+
+  /* Projects: a grid of case studies, each with a cover, a result and a line */
+  .projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: clamp(1.25rem, 2.5vw, 2rem); }
+  .project { display: grid; gap: .7rem; align-content: start; }
+  .project h3 { font: italic 400 1.7rem/1.1 var(--display); text-wrap: balance; }
+  .project .num { font-size: 2.25rem; }
+  .project .result { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; font-size: .95rem; }
+  /* Stand-ins for photography: the sun's own rings, cut from a different corner each time. */
+  .cover {
+    --at: 100% 0; --ground: var(--apricot);
+    aspect-ratio: 4 / 3; border-radius: 10px;
+    background: radial-gradient(circle at var(--at),
+      var(--core) 0 16%, var(--amber) 16% 30%, var(--orange) 30% 44%, var(--burnt) 44% 58%, var(--rust) 58% 72%, var(--ground) 72%);
+  }
+  .cover.b { --at: 0 100%; --ground: var(--ink); }
+  .cover.c { --at: 0 0; --ground: var(--amber); }
+  .cover.d { --at: 100% 100%; --ground: var(--night); }
+
+  /* Contact: one invitation, one address */
+  .contact-mail { font: italic 400 clamp(1.75rem, 4.6vw, 3.25rem)/1.1 var(--display); color: var(--ink); text-underline-offset: .15em; text-decoration-thickness: 1px; overflow-wrap: anywhere; }
+  .contact-mail:hover { color: var(--ember); }
+  .socials { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; }
+  .socials a { color: var(--ink); text-underline-offset: .3em; display: inline-flex; align-items: center; min-height: 44px; }
+
+  @media (max-width: 48rem) {
+    .about { grid-template-columns: 1fr; }
+    .roles li { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- navigation: a plate, top-left, because the sun owns the top-right ---------- */
+  .site-nav {
+    position: fixed; z-index: 10;
+    top: clamp(12px, 2.5vh, 24px); left: clamp(16px, 5vw, 64px);
+    max-width: calc(100vw - 32px);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .3rem .4rem .3rem 1rem;
+    background: var(--plate); color: var(--fg);
+    border: 1px solid var(--edge); border-radius: 999px;
+  }
+  .nav-brand { font: 900 1rem/1 var(--body); letter-spacing: -.02em; text-decoration: none; color: inherit; }
+  .nav-links { display: flex; align-items: center; gap: 1rem; }
+  .nav-link-mono {
+    font: .75rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    color: inherit; text-decoration: none;
+  }
+  .nav-link-mono:hover { text-decoration: underline; text-underline-offset: .3em; }
+
+  .reading-toggle, .nav-menu-toggle {
+    font: 700 .95rem/1 var(--body); color: inherit; background: transparent;
+    border: 1px solid var(--edge); border-radius: 999px;
+    min-width: 2.25rem; padding: .45rem .6rem; cursor: pointer;
+  }
+  .nav-menu-toggle { font: .75rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; list-style: none; }
+  .nav-menu-toggle::-webkit-details-marker { display: none; }
+  .reading-toggle:hover, .reading-toggle[aria-expanded="true"], .nav-menu[open] .nav-menu-toggle { background: var(--fg); color: var(--plate); }
+
+  /* Both dropdowns hang under the plate and are plates themselves. */
+  .nav-menu-panel, .reading-panel {
+    position: absolute; top: calc(100% + .5rem); left: 0;
+    min-width: 13rem; padding: 1rem;
+    background: var(--plate); color: var(--fg);
+    border: 1px solid var(--edge); border-radius: 14px;
+  }
+  .nav-menu-panel { display: grid; }
+  .nav-menu-panel .nav-link-mono { display: flex; align-items: center; min-height: 44px; }
+  .nav-menu { display: none; }
+  @media (max-width: 40rem) {
+    .nav-links { display: none; }
+    .nav-menu { display: block; }
+  }
+  @media (pointer: coarse) {
+    .reading-toggle, .nav-menu-toggle { min-width: 44px; min-height: 44px; }
+    .nav-menu-toggle { display: flex; align-items: center; }
+    .nav-links .nav-link-mono { display: flex; align-items: center; min-height: 44px; }
+  }
+
+  /* ---------- reading settings: the minimal pair, text size and contrast ---------- */
+  /* One rhythm: 1rem around the panel and between its parts, .5rem from a label to its
+     control. Title and note are ruled off; each setting is one segmented track. Sized
+     for a mouse by default; touch screens get the 44px targets further down. */
+  /* The panel floats from its own button: left edges aligned, a clear gap below the
+     nav. On narrow screens there is no room to its right, so it anchors to the nav. */
+  .reading { position: relative; }
+  .reading .reading-panel { top: calc(100% + .9rem); }
+  @media (max-width: 40rem) {
+    .reading { position: static; }
+    .reading .reading-panel { top: calc(100% + .5rem); }
+  }
+  .reading-panel { width: 16.5rem; max-width: calc(100vw - 32px); padding: 1.1rem; border-radius: 16px; }
+  .reading-panel:not([hidden]) { display: grid; gap: 1rem; }
+  .reading-title { font: 700 .925rem/1.2 var(--body); padding-bottom: .8rem; border-bottom: 1px solid var(--edge); }
+  .reading-group { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .reading-legend {
+    display: block; padding: 0; margin-bottom: .5rem;
+    font: .65rem/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  }
+  /* The track: equal segments, the chosen one filled. */
+  .reading-options {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px;
+    padding: 3px; border: 1px solid var(--edge); border-radius: 999px;
+  }
+  .reading-option { position: relative; display: block; }
+  .reading-option input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .reading-option span {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 38px; padding: 0 .5rem;
+    font: 500 .85rem/1 var(--body); border-radius: 999px;
+  }
+  .reading-option:hover span { background: color-mix(in oklab, var(--fg) 12%, transparent); }
+  .reading-option input:checked + span { background: var(--fg); color: var(--plate); font-weight: 700; }
+  .reading-option input:focus-visible + span { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .reading-note { font: .75rem/1.35 var(--body); padding-top: .8rem; border-top: 1px solid var(--edge); }
+  @media (pointer: coarse) {
+    .reading-panel { width: 17rem; }
+    .reading-option span { min-height: 44px; font-size: .875rem; }
+  }
+
+  /* Text size: nav and panel sizes are in rem, so the root scales them; the name scales with it. */
+  :root[data-size="115"] { font-size: 115%; }
+  :root[data-size="130"] { font-size: 130%; }
+  :root[data-size="115"] .banner h1 { font-size: clamp(4rem, 13.5vw, 10.35rem); }
+  :root[data-size="130"] .banner h1 { font-size: clamp(4.5rem, 15vw, 11.7rem); }
+
+  /* High contrast keeps the sun and the sky, and gives the name a plate so it never
+     depends on the sky behind it. The plate is the sun's own core yellow with ink text,
+     10.2:1, at every scroll position.
+     Applied when chosen, and when the system asks for more contrast unless the visitor
+     explicitly chose Standard. The two blocks are the same rules. */
+  :root[data-contrast="high"] .banner-id { background: var(--core); --fg: var(--ink); padding: 1rem 1rem 1.4rem; margin-left: -1rem; border-radius: 14px; }
+  :root[data-contrast="high"] .figures { display: none; }
+  :root[data-contrast="high"] { --edge: var(--fg); }
+  @media (prefers-contrast: more) {
+    :root:not([data-contrast="standard"]) .banner-id { background: var(--core); --fg: var(--ink); padding: 1rem 1rem 1.4rem; margin-left: -1rem; border-radius: 14px; }
+    :root:not([data-contrast="standard"]) .figures { display: none; }
+    :root:not([data-contrast="standard"]) { --edge: var(--fg); }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .layer b { animation: none; }
+  }
+</style>
+<script>
+  'use strict';
+  /**
+   * Reading settings, first half (after jc-root.xyz's reading.js, cut down to text size
+   * and contrast).
+   *
+   * Each choice is a data-<group> attribute on <html> that the stylesheet styles, saved in
+   * this browser's localStorage and nowhere else. This script is in <head> and not
+   * deferred on purpose: saved choices are on <html> before the body is parsed, so nothing
+   * flashes from the default look into the chosen one. The second half, at the end of
+   * <body>, wires the panel.
+   *
+   * READING is the only name this page adds to the global scope.
+   */
+  const READING = (() => {
+    const KEY = 'dg-reading';
+
+    /**
+     * Group -> its default value. A default is never written to <html>: the attribute's
+     * absence is the default look. Contrast is the exception the stylesheet relies on:
+     * an explicit "standard" opts out of the high-contrast rules that
+     * prefers-contrast: more would otherwise apply.
+     */
+    const GROUPS = { size: '100', contrast: 'standard' };
+    const root = document.documentElement;
+
+    /**
+     * Read the saved choices. Storage can be missing or throw (private windows, blocked
+     * site data), so a failure means "nothing saved".
+     * @returns {Object<string, string>} group -> chosen value; empty when nothing is saved
+     */
+    const load = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+        return saved && typeof saved === 'object' ? saved : {};
+      } catch (error) {
+        return {};
+      }
+    };
+
+    /**
+     * Save the choices, or clear the entry when every group is back on its default.
+     * @param {Object<string, string>} settings
+     */
+    const save = (settings) => {
+      try {
+        if (Object.keys(settings).length) localStorage.setItem(KEY, JSON.stringify(settings));
+        else localStorage.removeItem(KEY);
+      } catch (error) {
+        // Not remembered; still applied for this visit.
+      }
+    };
+
+    /**
+     * Reflect the choices onto <html> as data-size / data-contrast.
+     * @param {Object<string, string>} settings
+     */
+    const apply = (settings) => {
+      for (const group of Object.keys(GROUPS)) {
+        const value = settings[group];
+        const explicitStandard = group === 'contrast' && value === 'standard';
+        if (value && (value !== GROUPS[group] || explicitStandard)) root.setAttribute(`data-${group}`, value);
+        else root.removeAttribute(`data-${group}`);
+      }
+    };
+
+    const settings = load();
+    apply(settings);
+    return { GROUPS, settings, apply, save };
+  })();
+</script>
+</head>
+<body>
+
+<div class="stage" aria-hidden="true">
+  <div class="sky"></div>
+  <div class="dusk"></div>
+  <div class="figures"></div>
+
+  <div class="sun">
+    <div class="halo"></div>
+
+    <div class="layers">
+      <div class="layer" style="--n:0; --s:62vmin; --t:64s; --c:var(--apricot)"><b></b><b></b><b></b></div>
+      <div class="layer" style="--n:1; --s:52vmin; --t:52s; --c:var(--rust)"><b></b><b></b><b></b></div>
+      <div class="layer" style="--n:2; --s:43vmin; --t:44s; --c:var(--burnt)"><b></b><b></b><b></b></div>
+      <div class="layer" style="--n:3; --s:34vmin; --t:36s; --c:var(--orange)"><b></b><b></b><b></b></div>
+      <div class="layer" style="--n:4; --s:25vmin; --t:28s; --c:var(--amber)"><b></b><b></b><b></b></div>
+      <div class="layer" style="--n:5; --s:16vmin; --t:20s; --c:var(--core)"><b></b><b></b><b></b></div>
+    </div>
+  </div>
+</div>
+
+<header class="banner">
+  <div class="banner-id">
+    <h1>Dania Guzman</h1>
+    <!-- Sample wording: who she is and what she does, in a glance. -->
+    <p class="banner-sub">Brand and content strategist</p>
+  </div>
+</header>
+
+<nav class="site-nav" aria-label="Site navigation">
+  <a class="nav-brand" href="#top">DG</a>
+  <div class="nav-links">
+    <a class="nav-link-mono" href="#about">About</a>
+    <a class="nav-link-mono" href="#experience">Experience</a>
+    <a class="nav-link-mono" href="#projects">Projects</a>
+    <a class="nav-link-mono" href="#contact">Contact</a>
+  </div>
+  <!-- The button and its panel share a wrapper so the panel hangs from the button. -->
+  <div class="reading">
+    <!-- Ships hidden; the script reveals it, because without the script it would do nothing. -->
+    <button class="reading-toggle" type="button" aria-expanded="false" aria-controls="reading-panel" hidden>Aa<span class="visually-hidden"> Reading settings</span></button>
+    <div class="reading-panel" id="reading-panel" role="region" aria-labelledby="reading-title" hidden>
+      <p class="reading-title" id="reading-title">Reading settings</p>
+      <fieldset class="reading-group">
+        <legend class="reading-legend">Text size</legend>
+        <div class="reading-options">
+          <label class="reading-option"><input type="radio" name="reading-size" value="100"><span>100%</span></label>
+          <label class="reading-option"><input type="radio" name="reading-size" value="115"><span>115%</span></label>
+          <label class="reading-option"><input type="radio" name="reading-size" value="130"><span>130%</span></label>
+        </div>
+      </fieldset>
+      <fieldset class="reading-group">
+        <legend class="reading-legend">Contrast</legend>
+        <div class="reading-options">
+          <label class="reading-option"><input type="radio" name="reading-contrast" value="standard"><span>Standard</span></label>
+          <label class="reading-option"><input type="radio" name="reading-contrast" value="high"><span>High</span></label>
+        </div>
+      </fieldset>
+      <p class="reading-note">Saved in this browser only.</p>
+    </div>
+  </div>
+  <details class="nav-menu">
+    <summary class="nav-menu-toggle">Menu</summary>
+    <div class="nav-menu-panel">
+      <a class="nav-link-mono" href="#about">About</a>
+      <a class="nav-link-mono" href="#experience">Experience</a>
+      <a class="nav-link-mono" href="#projects">Projects</a>
+      <a class="nav-link-mono" href="#contact">Contact</a>
+    </div>
+  </details>
+</nav>
+
+<main>
+  <!-- SAMPLE CONTENT. Every name, brand, number and address below is invented to show
+       the layout. Replace all of it with Dania's real copy before this goes anywhere. -->
+  <section class="section" id="about">
+    <h2>About</h2>
+    <div class="about">
+      <div class="about-text">
+        <p class="lede">I help brands find the one thing worth saying, and then say it everywhere.</p>
+        <p>I'm Dania, a brand and content strategist based in Mérida. For eight years I've worked with food, hospitality and wellness brands that had a good product and a muddled story.</p>
+        <p>I work across strategy, social and campaigns, usually with small teams that need a clear voice more than a bigger budget.</p>
+      </div>
+      <dl class="stats">
+        <div><dt class="label">Years in brand and content</dt><dd class="num">8</dd></div>
+        <div><dt class="label">Brands launched or relaunched</dt><dd class="num">40+</dd></div>
+        <div><dt class="label">Organic views across campaigns</dt><dd class="num">120M</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section" id="experience">
+    <h2>Experience</h2>
+    <ol class="roles">
+      <li>
+        <span class="label">2023 to now</span>
+        <div class="role">
+          <h3>Independent brand and content strategist</h3>
+          <p class="org">Mérida, working remotely</p>
+          <p>Brand positioning, content systems and launch campaigns for founder-led companies in Mexico, the US and Spain.</p>
+        </div>
+      </li>
+      <li>
+        <span class="label">2020 to 2023</span>
+        <div class="role">
+          <h3>Head of Content</h3>
+          <p class="org">Marea Studio</p>
+          <p>Led a team of six across twelve client accounts and built the studio's content practice from two retainers to its largest service line.</p>
+        </div>
+      </li>
+      <li>
+        <span class="label">2018 to 2020</span>
+        <div class="role">
+          <h3>Social Media Lead</h3>
+          <p class="org">Casa Nopal Restaurant Group</p>
+          <p>Ran social for five restaurants and moved the group from promotions to storytelling about its kitchens and suppliers.</p>
+        </div>
+      </li>
+      <li>
+        <span class="label">2016 to 2018</span>
+        <div class="role">
+          <h3>Content Producer</h3>
+          <p class="org">Lumbre Coffee Roasters</p>
+          <p>Wrote, shot and edited the brand's first two years of content, from packaging copy to the weekly newsletter.</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="section" id="projects">
+    <h2>Projects</h2>
+    <div class="projects">
+      <article class="project">
+        <div class="cover" aria-hidden="true"></div>
+        <p class="label">Brand, campaign</p>
+        <h3>A restaurant relaunch that booked out its first month</h3>
+        <p class="result"><span class="num">+212%</span> reservations in 90 days</p>
+        <p>Casa Nopal reopened with a new name for its tasting menu and a campaign built around the cooks, not the dishes.</p>
+      </article>
+      <article class="project">
+        <div class="cover b" aria-hidden="true"></div>
+        <p class="label">Content, social</p>
+        <h3>From zero to a community of eighty thousand</h3>
+        <p class="result"><span class="num">80K</span> followers in six months</p>
+        <p>Ría Skincare launched with no ad budget and a weekly series answering the questions customers were too shy to ask.</p>
+      </article>
+      <article class="project">
+        <div class="cover c" aria-hidden="true"></div>
+        <p class="label">Campaign</p>
+        <h3>A launch film that travelled on its own</h3>
+        <p class="result"><span class="num">4.6M</span> organic views</p>
+        <p>Tinto Mezcal introduced its first export bottle with a three-minute film about the family that makes it.</p>
+      </article>
+      <article class="project">
+        <div class="cover d" aria-hidden="true"></div>
+        <p class="label">Brand, content</p>
+        <h3>More direct bookings, no discounts</h3>
+        <p class="result"><span class="num">+38%</span> direct bookings in a year</p>
+        <p>Hotel Brisa Lenta replaced its offers calendar with a guide to the town written by the people who work there.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="contact">
+    <h2>Contact</h2>
+    <p class="lede">Have a brand that deserves more attention than it gets?</p>
+    <p>I take on a few projects each quarter, and I'm open to talks and workshops. Tell me what you're building.</p>
+    <a class="contact-mail" href="mailto:hola@daniaguzman.example">hola@daniaguzman.example</a>
+    <ul class="socials label">
+      <li><a href="#contact">Instagram</a></li>
+      <li><a href="#contact">LinkedIn</a></li>
+      <li><a href="#contact">TikTok</a></li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  'use strict';
+
+  /* ---------- sky: publish scroll progress as --p (0..1). CSS does the rest. ---------- */
+  {
+    const root = document.documentElement;
+
+    /** Screens of scrolling the sunset takes. Raise it to slow the sky down. */
+    const TRAVEL = 1.5;
+
+    /** Pending animation-frame id, or 0 when none is queued. */
+    let frame = 0;
+
+    /** Write the current scroll position to --p, clamped to 0..1. */
+    const update = () => {
+      frame = 0;
+      const max = innerHeight * TRAVEL;
+      const p = Math.min(1, Math.max(0, scrollY / max));
+      root.style.setProperty('--p', p.toFixed(4));
+    };
+
+    // At most one write per frame, however many scroll events arrive.
+    addEventListener('scroll', () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    }, { passive: true });
+    addEventListener('resize', update);
+    update();
+  }
+
+  /* ---------- reading settings, second half: reveal the toggle and wire the panel ---------- */
+  {
+    const { GROUPS, settings, apply, save } = READING;
+    const toggle = document.querySelector('.reading-toggle');
+    const panel = document.getElementById('reading-panel');
+    const menu = document.querySelector('.nav-menu');
+    const prefersMore = window.matchMedia ? matchMedia('(prefers-contrast: more)') : null;
+
+    /**
+     * Check the radio in each group that matches what is in effect, including a high
+     * contrast the system asked for rather than the visitor.
+     */
+    const sync = () => {
+      for (const group of Object.keys(GROUPS)) {
+        let value = settings[group] || GROUPS[group];
+        if (group === 'contrast' && !settings.contrast && prefersMore && prefersMore.matches) value = 'high';
+        const input = panel.querySelector(`input[name="reading-${group}"][value="${value}"]`);
+        if (input) input.checked = true;
+      }
+    };
+
+    /** Open the panel, closing the phone menu first: one overlay at a time. */
+    const open = () => {
+      menu.open = false;
+      sync();
+      panel.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+      (panel.querySelector('input:checked') || panel.querySelector('input')).focus();
+    };
+
+    /**
+     * Close the panel.
+     * @param {boolean} returnFocus  true when closed from the keyboard, so focus goes back
+     *                               to the toggle instead of being lost
+     */
+    const close = (returnFocus) => {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      toggle.setAttribute('aria-expanded', 'false');
+      if (returnFocus) toggle.focus();
+    };
+
+    toggle.addEventListener('click', () => {
+      if (panel.hidden) open();
+      else close(false);
+    });
+
+    // A choice applies and saves at once; there is no confirm step.
+    panel.addEventListener('change', ({ target }) => {
+      const group = target.name.slice('reading-'.length);
+      if (target.value === GROUPS[group] && group !== 'contrast') delete settings[group];
+      else settings[group] = target.value;
+      apply(settings);
+      save(settings);
+    });
+
+    // Escape closes whichever dropdown is open and returns focus to its control.
+    addEventListener('keydown', ({ key }) => {
+      if (key !== 'Escape') return;
+      if (!panel.hidden) {
+        close(true);
+      } else if (menu.open) {
+        menu.open = false;
+        menu.querySelector('summary').focus();
+      }
+    });
+
+    // A click outside closes whichever dropdown is open.
+    document.addEventListener('click', ({ target }) => {
+      if (!panel.hidden && !panel.contains(target) && !toggle.contains(target)) close(false);
+      if (menu.open && !menu.contains(target)) menu.open = false;
+    });
+
+    menu.addEventListener('toggle', () => {
+      if (menu.open) close(false);
+    });
+
+    // The toggle ships hidden: without this script it would do nothing.
+    toggle.hidden = false;
+  }
+</script>
+</body>
+</html>
