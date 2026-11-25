@@ -20,7 +20,8 @@
 
   Contrast rules this file keeps
     Small text only ever sits on a solid surface (nav, panels, cards): 11:1 or better.
-    Text straight on the sky is large text only, and scrolls away before the sky darkens.
+    Text straight on the sky is large text only, always ink, 3:1 or better over the sky
+    and every ring of the sun at every text size; it scrolls away as the sky darkens.
     High contrast puts the banner text on a solid surface too.
 
   The sun, sky and texture are documented in scroll-sunset-recreate.md.
@@ -45,7 +46,7 @@
     --amber:  #f4ad4e;
     --orange: #ee8a35;
     --burnt:  #de6a2b;
-    --rust:   #c44f27;
+    --rust:   #c9542c;   /* the darkest ring the name scrolls over: ink on it is 3.1:1, so no darker */
     --apricot:#efb382;
     --ink:    #3d2a1b;
     --cream:  #f6ead3;
@@ -67,7 +68,7 @@
     /* Foreground follows the sky: ink by day, cream at dusk. It is a hard switch, not a
        fade, because a half-mixed text colour on a half-dark sky is the lowest contrast
        there is. 0.46 is where ink and cream read equally well against the sky. The nav
-       and its panels use it; the banner text has scrolled away before it is reached. */
+       and its panels use it; the banner text never switches (see .banner). */
     --flip: clamp(0, calc((var(--p) - 0.46) / 0.002), 1);
     --fg: color-mix(in oklab, var(--cream) calc(var(--flip) * 100%), var(--ink));
     /* A plate is a solid surface for small text, so it never sits on the sun or
@@ -178,6 +179,9 @@
   /* ---------- welcome banner: the name, left, vertically centred ---------- */
   /* An ordinary first screen of the page: it scrolls away like everything else. */
   .banner {
+    /* Always ink. At larger text sizes on small screens the last of the text is still
+       leaving when the sky switches, and cream there would be under 3:1. */
+    --fg: var(--ink);
     position: relative; z-index: 1;
     min-height: 100vh; min-height: 100svh;
     display: grid; align-content: center; justify-items: start;
@@ -188,12 +192,11 @@
     letter-spacing: -.01em;
     color: var(--fg);
   }
-  /* The subtitle sits straight on the sky, so it is semibold and never below 1.2rem:
-     that keeps it in the large-text class, where the sky gives it 9:1 at the top of
-     the page and no less than 4:1 by the time it scrolls off. */
+  /* The subtitle sits straight on the sky, so it is bold and never below 1.2rem (19px):
+     that keeps it in WCAG's large-text class (bold from 18.66px), whose bar is 3:1. */
   .banner-sub {
     margin-top: .9rem;
-    font: 600 clamp(1.2rem, 2.2vw, 1.6rem)/1.3 var(--body);
+    font: 700 clamp(1.2rem, 2.2vw, 1.6rem)/1.3 var(--body);
     color: var(--fg);
   }
 
@@ -241,8 +244,9 @@
   .roles .role { display: grid; gap: .3rem; }
   .roles .org { font-size: .95rem; }
 
-  /* Projects: a grid of case studies, each with a cover, a result and a line */
-  .projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: clamp(1.25rem, 2.5vw, 2rem); }
+  /* Projects: a grid of case studies, each with a cover, a result and a line.
+     min(15rem, 100%): at larger text sizes 15rem is wider than a phone's card. */
+  .projects { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); gap: clamp(1.25rem, 2.5vw, 2rem); }
   .project { display: grid; gap: .7rem; align-content: start; }
   .project h3 { font: italic 400 1.7rem/1.1 var(--display); text-wrap: balance; }
   .project .num { font-size: 2.25rem; }
@@ -728,10 +732,11 @@
       }
     });
 
-    // A click outside closes whichever dropdown is open.
+    // A click outside closes whichever dropdown is open. A link inside the phone menu
+    // closes it too: otherwise it stays open over the section it just led to.
     document.addEventListener('click', ({ target }) => {
       if (!panel.hidden && !panel.contains(target) && !toggle.contains(target)) close(false);
-      if (menu.open && !menu.contains(target)) menu.open = false;
+      if (menu.open && (!menu.contains(target) || target.closest('a'))) menu.open = false;
     });
 
     menu.addEventListener('toggle', () => {
