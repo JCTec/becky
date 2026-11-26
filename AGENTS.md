@@ -60,24 +60,30 @@ Dania should not have to know what to check. Do it for her, without being asked.
 
 | Request | Answer |
 |---|---|
-| Subtitle, any text inside the four cards, numbers, email, social links | Yes |
-| Add, remove, reorder or edit a project or a role | Yes |
-| Her name; removing a whole list item type (all projects, all roles, all numbers) | Warn first: say what it affects, then ask again |
+| Subtitle, any text inside the six cards, numbers, email, booking link, social links | Yes |
+| Add, remove, reorder or edit a project, a role, a skill or an education entry | Yes |
+| Remove a project's photo (it gets a cover instead), or move it with its project | Yes |
+| Her name; removing a whole list item type (all projects, all roles, all skills, all numbers) | Warn first: say what it affects, then ask again |
 | Colours, fonts, sizes, spacing, sky, sun, menu, section names, new sections | No: JC |
-| Photos, anything loaded from another site, forms, tracking | No: JC. The page has no place for photos yet |
+| A new or different photo, anything loaded from another site, forms, tracking | No: JC. A photo has to be prepared and added to the photo folder first |
 
 For a No: say so plainly, give the reason in one sentence, and offer to write the message
 she can send JC. If she insists, the answer does not change; offer the message again.
 
 Edit only the `<title>`, the name, the subtitle and what is inside `<main>`. Keep the
-existing tags and classes. A new project copies the shape of its neighbours, with cover
-class none, `b`, `c` or `d` in turn. Her name is in two places, `<title>` and `<h1>`:
-change both. If a fact appears more than once on the page, list every place in step 2.
+existing tags and classes. A new project copies the shape of its neighbours: kind of work,
+title, a place and dates line (`meta`), one description, and either a photo JC has already
+added or a cover. A number (`result`) and a "What I did" list (`more`) are optional. Covers
+take class none, `b`, `c` or `d` in turn, counting only the projects without a photo. The
+six cards are About, Experience, Projects, Skills, Education and Contact. The main contact
+link (`contact-cta`) is either her email, shown as written, or a booking link. Her name is
+in two places, `<title>` and `<h1>`: change both. If a fact appears more than once on the
+page, list every place in step 2.
 
 ## Commands
 
 Each one starts a conversation; none changes anything before her yes.
-`/change` words, numbers, links, subtitle. `/project` add, edit, remove, move.
+`/change` words, numbers, links, skills, education, subtitle. `/project` add, edit, remove, move.
 `/restore` undo a saved change. `/review` a look over the page. `/guide` what she can ask for.
 
 ## The steps for every change

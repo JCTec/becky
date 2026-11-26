@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <!--
-  Dania Guzmán: personal site, one file.
+  Dania Guzmán: personal site. This page plus the project photos in images/.
 
   How it is put together
     1. A fixed stage behind everything draws the sky, the line texture and the layered sun.
        It never scrolls. One number, --p (0 to 1), drives every change in it.
     2. The page itself is ordinary document flow on top of the stage: the welcome banner
-       (name and subtitle), then one card per section. Nothing in the flow is animated.
+       (name and subtitle), then one card per section: About, Experience, Projects, Skills,
+       Education, Contact. Nothing in the flow is animated.
     3. A fixed navigation pill, top-left, with the reading settings (text size, contrast).
 
   Scripts: two, both plain ECMAScript 2015, no libraries, no build step.
@@ -20,6 +21,7 @@
 
   Contrast rules this file keeps
     Small text only ever sits on a solid surface (nav, panels, cards): 11:1 or better.
+    That includes project meta lines, "What I did" lists and skill chips: ink on cream.
     Text straight on the sky is large text only, always ink, 3:1 or better over the sky
     and every ring of the sun at every text size; it scrolls away as the sky darkens.
     High contrast puts the banner text on a solid surface too, and takes card text to 18:1.
@@ -222,8 +224,8 @@
 
   /* ---------- inside the cards ---------- */
   /* Everything on a card is ink on cream (11:1). --ember is the one accent, a deep rust
-     used only for large numerals: 6.6:1, which clears the large-text bar. Covers are
-     decoration and carry no text. */
+     used only for large numerals: 6.6:1, which clears the large-text bar. A project shows
+     a photo, or the sun-ring cover when it has none; neither carries text the page needs. */
   .section { --rule: color-mix(in oklab, var(--ink) 25%, var(--cream)); --ember: #8f3417; gap: clamp(1.5rem, 3vw, 2.5rem); }
   .section h3 { font: 600 1.15rem/1.25 var(--body); }
   .section .lede { font: italic 400 clamp(1.6rem, 3.2vw, 2.4rem)/1.18 var(--display); max-width: 22em; text-wrap: balance; }
@@ -251,6 +253,27 @@
   .project h3 { font: italic 400 1.7rem/1.1 var(--display); text-wrap: balance; }
   .project .num { font-size: 2.25rem; }
   .project .result { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; font-size: .95rem; }
+  .project .meta { font-size: .9rem; }
+  .project p a { color: var(--ink); text-underline-offset: .2em; }
+  .project p a:hover { color: var(--ember); }
+  /* Photos take the cover's place and footprint. Portrait shots keep their top, where the
+     subject is; the apricot shows only while the image loads. */
+  .project .photo {
+    display: block; width: 100%; height: auto; aspect-ratio: 4 / 3;
+    object-fit: cover; object-position: 50% 20%;
+    border-radius: 10px; background: var(--apricot);
+  }
+  /* "What I did": the detail bullets, folded so the cards stay level. */
+  .more summary {
+    display: flex; align-items: center; gap: .5rem; width: fit-content;
+    font: .7rem/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    cursor: pointer; list-style: none;
+  }
+  .more summary::-webkit-details-marker { display: none; }
+  .more summary::before { content: "+"; font: 700 1rem/1 var(--body); }
+  .more[open] summary::before { content: "\2212"; }
+  .more summary:hover { text-decoration: underline; text-underline-offset: .3em; }
+  .more ul { display: grid; gap: .45rem; padding: .6rem 0 0 1.1rem; font-size: .95rem; line-height: 1.45; }
   /* Stand-ins for photography: the sun's own rings, cut from a different corner each time. */
   .cover {
     --at: 100% 0; --ground: var(--apricot);
@@ -262,9 +285,15 @@
   .cover.c { --at: 0 0; --ground: var(--amber); }
   .cover.d { --at: 100% 100%; --ground: var(--night); }
 
-  /* Contact: one invitation, one address */
-  .contact-mail { font: italic 400 clamp(1.75rem, 4.6vw, 3.25rem)/1.1 var(--display); color: var(--ink); text-underline-offset: .15em; text-decoration-thickness: 1px; overflow-wrap: anywhere; }
-  .contact-mail:hover { color: var(--ember); }
+  /* Skills: one group per area, each skill a chip */
+  .skills { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: clamp(1.5rem, 3vw, 2.5rem); }
+  .skills > li { display: grid; gap: .8rem; align-content: start; }
+  .tags { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .45rem; }
+  .tags li { padding: .35rem .75rem; border: 1px solid var(--rule); border-radius: 999px; font-size: .9rem; line-height: 1.3; }
+
+  /* Contact: one invitation, one way in (an address or a booking link) */
+  .contact-cta { font: italic 400 clamp(1.75rem, 4.6vw, 3.25rem)/1.1 var(--display); color: var(--ink); text-underline-offset: .15em; text-decoration-thickness: 1px; overflow-wrap: anywhere; }
+  .contact-cta:hover { color: var(--ember); }
   .socials { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; }
   .socials a { color: var(--ink); text-underline-offset: .3em; display: inline-flex; align-items: center; min-height: 44px; }
 
@@ -310,7 +339,8 @@
   .nav-menu-panel { display: grid; }
   .nav-menu-panel .nav-link-mono { display: flex; align-items: center; min-height: 44px; }
   .nav-menu { display: none; }
-  @media (max-width: 40rem) {
+  /* Six links need about 50rem of width with the brand and the Aa button. */
+  @media (max-width: 56rem) {
     .nav-links { display: none; }
     .nav-menu { display: block; }
   }
@@ -371,7 +401,7 @@
      depends on the sky behind it. The plate is the sun's own core yellow with ink text,
      10.2:1, at every scroll position.
      Cards redefine their own colours, so everything inside follows: near-black on warm
-     white (18:1), numerals 11:1, solid rules, and heavier small text. .contact-mail and
+     white (18:1), numerals 11:1, solid rules, and heavier small text. .contact-cta and
      the headings use the display font, which has one weight, so only colour changes there.
      Applied when chosen, and when the system asks for more contrast unless the visitor
      explicitly chose Standard. The two blocks are the same rules. */
@@ -381,6 +411,7 @@
   :root[data-contrast="high"] .section { --ink: #120a05; --cream: #fffaf0; --ember: #6b1f08; --rule: var(--ink); border: 2px solid var(--ink); }
   :root[data-contrast="high"] .section p:not(.lede):not(.label) { font-weight: 500; }
   :root[data-contrast="high"] .section .label { font-weight: 700; }
+  :root[data-contrast="high"] .section :is(.tags, .more) li { font-weight: 500; }
   @media (prefers-contrast: more) {
     :root:not([data-contrast="standard"]) .banner-id { background: var(--core); --fg: var(--ink); padding: 1rem 1rem 1.4rem; margin-left: -1rem; border-radius: 14px; }
     :root:not([data-contrast="standard"]) .figures { display: none; }
@@ -388,6 +419,7 @@
     :root:not([data-contrast="standard"]) .section { --ink: #120a05; --cream: #fffaf0; --ember: #6b1f08; --rule: var(--ink); border: 2px solid var(--ink); }
     :root:not([data-contrast="standard"]) .section p:not(.lede):not(.label) { font-weight: 500; }
     :root:not([data-contrast="standard"]) .section .label { font-weight: 700; }
+    :root:not([data-contrast="standard"]) .section :is(.tags, .more) li { font-weight: 500; }
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -493,8 +525,7 @@
 <header class="banner">
   <div class="banner-id">
     <h1>Dania Guzmán</h1>
-    <!-- Sample wording: who she is and what she does, in a glance. -->
-    <p class="banner-sub">Brand and content strategist</p>
+    <p class="banner-sub">Marketing &amp; business development</p>
   </div>
 </header>
 
@@ -504,6 +535,8 @@
     <a class="nav-link-mono" href="#about">About</a>
     <a class="nav-link-mono" href="#experience">Experience</a>
     <a class="nav-link-mono" href="#projects">Projects</a>
+    <a class="nav-link-mono" href="#skills">Skills</a>
+    <a class="nav-link-mono" href="#education">Education</a>
     <a class="nav-link-mono" href="#contact">Contact</a>
   </div>
   <!-- The button and its panel share a wrapper so the panel hangs from the button. -->
@@ -536,26 +569,27 @@
       <a class="nav-link-mono" href="#about">About</a>
       <a class="nav-link-mono" href="#experience">Experience</a>
       <a class="nav-link-mono" href="#projects">Projects</a>
+      <a class="nav-link-mono" href="#skills">Skills</a>
+      <a class="nav-link-mono" href="#education">Education</a>
       <a class="nav-link-mono" href="#contact">Contact</a>
     </div>
   </details>
 </nav>
 
 <main>
-  <!-- SAMPLE CONTENT. Every name, brand, number and address below is invented to show
-       the layout. Replace all of it with Dania's real copy before this goes anywhere. -->
   <section class="section" id="about">
     <h2>About</h2>
     <div class="about">
       <div class="about-text">
-        <p class="lede">I help brands find the one thing worth saying, and then say it everywhere.</p>
-        <p>I'm Dania, a brand and content strategist based in Mérida. For eight years I've worked with food, hospitality and wellness brands that had a good product and a muddled story.</p>
-        <p>I work across strategy, social and campaigns, usually with small teams that need a clear voice more than a bigger budget.</p>
+        <p class="lede">Connecting ideas, people and technology to move businesses forward.</p>
+        <p>I'm Dania, a multidisciplinary marketing and business development professional. Over the past six years I've worked across real estate, wellness and technology, in Mexico, Ireland and France.</p>
+        <p>I help entrepreneurs and growing businesses structure their ideas, strengthen their value proposition and grow, bringing together Go-to-Market strategy, partnerships, data-driven decisions, commercial development and AI-powered solutions.</p>
+        <p>Curious, people-oriented and entrepreneurial. Outside work: philosophy, yoga, fitness and hiking. Always curious. Always building. Always growing.</p>
       </div>
       <dl class="stats">
-        <div><dt class="label">Years in brand and content</dt><dd class="num">8</dd></div>
-        <div><dt class="label">Brands launched or relaunched</dt><dd class="num">40+</dd></div>
-        <div><dt class="label">Organic views across campaigns</dt><dd class="num">120M</dd></div>
+        <div><dt class="label">Years of experience</dt><dd class="num">6</dd></div>
+        <div><dt class="label">Countries worked in</dt><dd class="num">3</dd></div>
+        <div><dt class="label">Projects in this portfolio</dt><dd class="num">10</dd></div>
       </dl>
     </div>
   </section>
@@ -564,35 +598,35 @@
     <h2>Experience</h2>
     <ol class="roles">
       <li>
-        <span class="label">2023 to now</span>
+        <span class="label">Apr to Oct 2026</span>
         <div class="role">
-          <h3>Independent brand and content strategist</h3>
-          <p class="org">Mérida, working remotely</p>
-          <p>Brand positioning, content systems and launch campaigns for founder-led companies in Mexico, the US and Spain.</p>
+          <h3>Marketing &amp; Business Development Intern</h3>
+          <p class="org">Unitel Cloud Services, Marseille, France</p>
+          <p>AI project communication, strategic positioning, B2B marketing, content strategy and project coordination, as part of my MSc.</p>
         </div>
       </li>
       <li>
-        <span class="label">2020 to 2023</span>
+        <span class="label">2024 to 2025</span>
         <div class="role">
-          <h3>Head of Content</h3>
-          <p class="org">Marea Studio</p>
-          <p>Led a team of six across twelve client accounts and built the studio's content practice from two retainers to its largest service line.</p>
+          <h3>Junior Consultant: Partnerships &amp; Marketing</h3>
+          <p class="org">The Barrel Sauna, Dublin, Ireland</p>
+          <p>Strategic partnerships, social media management, graphic design, B2B strategy and brand development.</p>
         </div>
       </li>
       <li>
-        <span class="label">2018 to 2020</span>
+        <span class="label">2020 to 2026</span>
         <div class="role">
-          <h3>Social Media Lead</h3>
-          <p class="org">Casa Nopal Restaurant Group</p>
-          <p>Ran social for five restaurants and moved the group from promotions to storytelling about its kitchens and suppliers.</p>
+          <h3>Freelance Marketing Consultant</h3>
+          <p class="org">By project, in Mexico, Ireland and France</p>
+          <p>Clients include Kiin Mx ART and Mercuria EcoCosmetics.</p>
         </div>
       </li>
       <li>
-        <span class="label">2016 to 2018</span>
+        <span class="label">2019 to 2022</span>
         <div class="role">
-          <h3>Content Producer</h3>
-          <p class="org">Lumbre Coffee Roasters</p>
-          <p>Wrote, shot and edited the brand's first two years of content, from packaging copy to the weekly newsletter.</p>
+          <h3>Head of Marketing</h3>
+          <p class="org">Remax Otoch Real Estate, Mérida, Mexico</p>
+          <p>Ran the marketing department for two years, after a year as Social Media &amp; Business Developer.</p>
         </div>
       </li>
     </ol>
@@ -602,45 +636,218 @@
     <h2>Projects</h2>
     <div class="projects">
       <article class="project">
+        <img class="photo" src="images/unitel.jpg" alt="Video interview being filmed for Unitel Cloud Services" width="611" height="701" loading="lazy">
+        <p class="label">B2B marketing, AI communication</p>
+        <h3>Unitel Cloud Services</h3>
+        <p class="meta">Marseille, France · Apr to Oct 2026</p>
+        <p>Marketing and business development internship: AI project communication, strategic positioning, B2B marketing, content strategy and project coordination.</p>
+        <details class="more">
+          <summary>What I did</summary>
+          <ul>
+            <li>Built a Value Cases framework that turns customer experiences into reusable sales and marketing assets.</li>
+            <li>Structured business data and reference material for an internal AI agent.</li>
+            <li>Co-managed launch communication for a major AI campus project: positioning, sales assets, content and stakeholder coordination.</li>
+            <li>Customer communication strategy and a customer feedback (RETEX) project around AI-driven value creation.</li>
+            <li>B2B email marketing and copywriting.</li>
+            <li>Learned strategic research and business consulting through the internship, as part of my MSc.</li>
+          </ul>
+        </details>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/pepita.jpg" alt="Pepita website: yellow flower branding for a home chef service" width="900" height="425" loading="lazy">
+        <p class="label">Consulting, digital strategy</p>
+        <h3>Pepita Batchooking</h3>
+        <p class="meta">Marseille, France</p>
+        <p>Entrepreneurial consulting on business and digital strategy for a home chef service.</p>
+        <details class="more">
+          <summary>What I did</summary>
+          <ul>
+            <li>Workflow design and digital tools optimization.</li>
+            <li>Lead capture strategy.</li>
+            <li>Website structure and customer journey planning.</li>
+            <li>Strategic business development and a brand book.</li>
+          </ul>
+        </details>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/barrel-sauna.jpg" alt="The Barrel Sauna: A/B testing plan for Meta Ads in Tallaght, 2024" width="717" height="538" loading="lazy">
+        <p class="label">Partnerships, social media</p>
+        <h3>The Barrel Sauna: Marketing &amp; Experiences</h3>
+        <p class="meta">Dublin, Ireland · 2024 to 2025</p>
+        <p>Social media management, graphic design, business growth, B2B partnerships and brand development, including A/B testing Meta Ads audiences for the Tallaght location.</p>
+        <details class="more">
+          <summary>What I did</summary>
+          <ul>
+            <li>Developed and managed strategic partnerships to drive growth.</li>
+            <li>Mapped customer journeys from target-segment data to improve the client experience.</li>
+            <li>Analysed engagement data and ran digital campaigns to keep clients coming back.</li>
+            <li>Packaging and signage.</li>
+            <li>Social media management: copywriting, video and image editing, planning, analytics and ads.</li>
+            <li>Business growth: PDF design for outreach and development of B2B strategies.</li>
+          </ul>
+        </details>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/kiin-mx-art.jpg" alt="Brochure page: About the Artist, Kathrina Rupit" width="636" height="900" loading="lazy">
+        <p class="label">Brochure design, freelance</p>
+        <h3>Kiin Mx ART (Kathrina Rupit)</h3>
+        <p class="meta">Dublin, Ireland</p>
+        <p>Brochure design and marketing for an art gallery's showing at a Cultural Night at the Mexican Embassy in Ireland, an event that brought together the Indian, Mexican and Irish diasporas.</p>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/remax-otoch.jpg" alt="Remax Otoch open house campaign photo" width="900" height="676" loading="lazy">
+        <p class="label">Marketing leadership</p>
+        <h3>Remax Otoch: Head of Marketing</h3>
+        <p class="meta">Mérida, Mexico · 2019 to 2022</p>
+        <p>Led the marketing department of a real estate agency and grew its property portfolio through partnerships and brand marketing.</p>
+        <details class="more">
+          <summary>What I did</summary>
+          <ul>
+            <li>Coordinated internal teams for a seamless client experience from pre-sales to contract signature.</li>
+            <li>Managed B2B prospecting, lead qualification and the sales pipeline.</li>
+            <li>Grew the company's property portfolio through partnerships and brand marketing.</li>
+            <li>Print design, sales strategy, social media, and video and image editing.</li>
+            <li>Created and ran the Organizational Philosophy program and the university interns program.</li>
+            <li>Event and press management, website structure and copywriting.</li>
+          </ul>
+        </details>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/construye-con-conciencia.jpg" alt="Construye Con Conciencia stand at Expo Vivienda Yucatán" width="864" height="864" loading="lazy">
+        <p class="label">Event, sustainability</p>
+        <h3>Construye Con Conciencia (Conscious Building)</h3>
+        <p class="meta">Mérida, Mexico</p>
+        <p>Co-created an event promoting sustainable, responsible housing development in Yucatán, took it to the local real estate fair and presented it to Governor Mauricio Vila. <a href="https://www.facebook.com/watch/?v=2791718047523816">Watch the event video</a>.</p>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/tan-tan.jpg" alt="Bikklo cycling kit designed with Tan-Tán" width="648" height="785" loading="lazy">
+        <p class="label">Branding, product design</p>
+        <h3>Tan-Tán Design Studio</h3>
+        <p class="meta">Mérida, Mexico</p>
+        <p>As Creative Associate: branding, naming and identity, market research, web copywriting, and product design and packaging.</p>
+      </article>
+      <article class="project">
+        <img class="photo" src="images/mercuria.jpg" alt="Mercuria EcoCosmetics product photo" width="826" height="821" loading="lazy">
+        <p class="label">Strategy, Meta Ads, freelance</p>
+        <h3>Mercuria EcoCosmetics</h3>
+        <p class="meta">Mérida, Mexico</p>
+        <p>Business strategy, Meta Ads management, a content distribution plan and performance reporting.</p>
+      </article>
+      <article class="project">
         <div class="cover" aria-hidden="true"></div>
-        <p class="label">Brand, campaign</p>
-        <h3>A restaurant relaunch that booked out its first month</h3>
-        <p class="result"><span class="num">+212%</span> reservations in 90 days</p>
-        <p>Casa Nopal reopened with a new name for its tasting menu and a campaign built around the cooks, not the dishes.</p>
+        <p class="label">Photography, campaign</p>
+        <h3>Colors for Good</h3>
+        <p class="meta">El Cuyo, Mexico</p>
+        <p>As Sales Associate, I photographed the women artisans and their children wearing the sustainable bracelets they make, for a marketing campaign.</p>
       </article>
       <article class="project">
-        <div class="cover b" aria-hidden="true"></div>
-        <p class="label">Content, social</p>
-        <h3>From zero to a community of eighty thousand</h3>
-        <p class="result"><span class="num">80K</span> followers in six months</p>
-        <p>Ría Skincare launched with no ad budget and a weekly series answering the questions customers were too shy to ask.</p>
-      </article>
-      <article class="project">
-        <div class="cover c" aria-hidden="true"></div>
-        <p class="label">Campaign</p>
-        <h3>A launch film that travelled on its own</h3>
-        <p class="result"><span class="num">4.6M</span> organic views</p>
-        <p>Tinto Mezcal introduced its first export bottle with a three-minute film about the family that makes it.</p>
-      </article>
-      <article class="project">
-        <div class="cover d" aria-hidden="true"></div>
-        <p class="label">Brand, content</p>
-        <h3>More direct bookings, no discounts</h3>
-        <p class="result"><span class="num">+38%</span> direct bookings in a year</p>
-        <p>Hotel Brisa Lenta replaced its offers calendar with a guide to the town written by the people who work there.</p>
+        <img class="photo" src="images/optimus.jpg" alt="Optimus report page: global sports betting market research" width="695" height="900" loading="lazy">
+        <p class="label">Market research, strategy</p>
+        <h3>Optimus Sports</h3>
+        <p class="meta">June 2022</p>
+        <p>Stage 1 report on industry research and context for an online sports betting project, followed by market research and business strategy.</p>
       </article>
     </div>
   </section>
 
+  <section class="section" id="skills">
+    <h2>Skills</h2>
+    <ul class="skills">
+      <li>
+        <h3>Strategy &amp; growth</h3>
+        <ul class="tags">
+          <li>Business strategy</li>
+          <li>Go-to-Market</li>
+          <li>B2B strategy and partnerships</li>
+          <li>Sales strategy</li>
+          <li>Strategic positioning</li>
+          <li>Lead capture</li>
+          <li>Market and industry research</li>
+        </ul>
+      </li>
+      <li>
+        <h3>Marketing &amp; content</h3>
+        <ul class="tags">
+          <li>Social media management</li>
+          <li>Meta Ads</li>
+          <li>Content strategy and distribution plans</li>
+          <li>B2B email marketing</li>
+          <li>Copywriting and web copy</li>
+          <li>Performance reporting and analytics</li>
+        </ul>
+      </li>
+      <li>
+        <h3>Brand &amp; design</h3>
+        <ul class="tags">
+          <li>Branding</li>
+          <li>Naming and identity</li>
+          <li>Brand books</li>
+          <li>Packaging and signage</li>
+          <li>Print and brochure design</li>
+          <li>Product design</li>
+          <li>Photography</li>
+          <li>Video and image editing</li>
+        </ul>
+      </li>
+      <li>
+        <h3>Digital &amp; AI</h3>
+        <ul class="tags">
+          <li>AI-driven value creation</li>
+          <li>AI project communication</li>
+          <li>Workflow design</li>
+          <li>Digital tools optimization</li>
+          <li>Website structure</li>
+          <li>Customer journey planning</li>
+        </ul>
+      </li>
+      <li>
+        <h3>Management</h3>
+        <ul class="tags">
+          <li>Running a marketing department</li>
+          <li>Project coordination</li>
+          <li>Event and press management</li>
+          <li>University interns program</li>
+          <li>Organizational philosophy program</li>
+        </ul>
+      </li>
+    </ul>
+  </section>
+
+  <section class="section" id="education">
+    <h2>Education</h2>
+    <ol class="roles">
+      <li>
+        <span class="label">2025 to 2026</span>
+        <div class="role">
+          <h3>MSc Strategic Research &amp; Business Consulting</h3>
+          <p class="org">IAE Aix-Marseille, France</p>
+          <p>Research focus: from entrepreneurial agility to scalable commercial practices. Courses include business AI, non-market strategies and CSR, plus a real consulting project.</p>
+        </div>
+      </li>
+      <li>
+        <span class="label">2017 to 2021</span>
+        <div class="role">
+          <h3>Licence (bachelor's) in Marketing</h3>
+          <p class="org">EBC México</p>
+          <p>Graduated with a 9/10 average, focused on market segmentation and strategic intelligence.</p>
+        </div>
+      </li>
+      <li>
+        <span class="label">2023 to 2024</span>
+        <div class="role">
+          <h3>English language training</h3>
+          <p class="org">Dublin, Ireland</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
   <section class="section" id="contact">
     <h2>Contact</h2>
-    <p class="lede">Have a brand that deserves more attention than it gets?</p>
-    <p>I take on a few projects each quarter, and I'm open to talks and workshops. Tell me what you're building.</p>
-    <a class="contact-mail" href="mailto:hola@daniaguzman.example">hola@daniaguzman.example</a>
+    <p class="lede">Not every idea needs a business plan. Sometimes it just needs the right conversation to get started.</p>
+    <a class="contact-cta" href="https://cal.com/dania-guzman*flores/">Book a call</a>
     <ul class="socials label">
-      <li><a href="#contact">Instagram</a></li>
-      <li><a href="#contact">LinkedIn</a></li>
-      <li><a href="#contact">TikTok</a></li>
+      <li><a href="https://www.linkedin.com/in/dania-guzm%C3%A1n-flores-0822a8130">LinkedIn</a></li>
     </ul>
   </section>
 </main>

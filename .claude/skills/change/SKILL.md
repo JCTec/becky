@@ -1,6 +1,6 @@
 ---
 name: change
-description: Change words, numbers, links or the subtitle on Dania's page.
+description: Change words, numbers, links, skills, education or the subtitle on Dania's page.
 argument-hint: what you want to change
 disable-model-invocation: true
 ---
